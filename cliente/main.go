@@ -1,34 +1,45 @@
 // main.go - Loop principal do jogo
 package main
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 func main() {
-	// Inicializa a interface (termbox)
-	interfaceIniciar()
+
+	if len(os.Args) != 3 {
+		fmt.Println("Uso:", os.Args[0], " <servidor> <nome_do_jogador>")
+		return
+	}
+	interfaceIniciar() // iniciar a interface gráfica
 	defer interfaceFinalizar()
 
-	// Usa "mapa.txt" como arquivo padrão ou lê o primeiro argumento
-	mapaFile := "mapa.txt"
-	if len(os.Args) > 1 {
-		mapaFile = os.Args[1]
-	}
+	servidor := os.Args[1]
+	nomeJogador := os.Args[2]
 
-	// Inicializa o jogo
+	cliente := NewRemoteClient(nomeJogador, servidor)
+	defer cliente.client.Close() // fechar a conexão com o servidor ao encerrar o programa
+
 	jogo := jogoNovo()
-	if err := jogoCarregarMapa(mapaFile, &jogo); err != nil {
-		panic(err)
+	if err := jogoCarregarMapa("mapa.txt", &jogo); err != nil {
+		panic(err) // encerrar o programa se o mapa não puder ser carregado
 	}
+	cliente.updateState(jogo.PosY, jogo.PosX) // Sync initial position
 
-	// Desenha o estado inicial do jogo
-	interfaceDesenharJogo(&jogo)
+	loopPrincipal(&jogo, cliente)
+	fmt.Println("Jogo encerrado") // mensagem de encerramento do jogo
 
-	// Loop principal de entrada
+}
+func loopPrincipal(jogo *Jogo, cliente *RemoteClient) {
+	// Draw initial state
+	interfaceDesenharJogo(jogo, cliente)
+
 	for {
 		evento := interfaceLerEventoTeclado()
-		if continuar := personagemExecutarAcao(evento, &jogo); !continuar {
+		if continuar := personagemExecutarAcao(evento, jogo, cliente); !continuar {
 			break
 		}
-		interfaceDesenharJogo(&jogo)
+		interfaceDesenharJogo(jogo, cliente)
 	}
 }

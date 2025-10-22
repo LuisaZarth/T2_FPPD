@@ -87,3 +87,7 @@ func (rc *RemoteClient) getRemotos() map[string]PlayerState {
 	}
 	return cp
 }
+
+func (rc *RemoteClient) close() {
+	rc.client.Close() // fechar a conexão com o servidor
+}
