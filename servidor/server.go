@@ -3,47 +3,31 @@ package main
 
 //pacotes padrão usados pelo servidor RPC
 import (
-	"errors" 
+	"errors"
 	"log"
 	"net"
 	"net/rpc"
 	"sync"
+
+	"jogo/shared"
 )
 
-//tipos de dados trocados via RPC
-//representa o estado mínimo de um jogador mantido no servidor
-type PlayerState struct {
-	ID    string
-	Linha int
-	Col   int
-}
+// Type aliases for shared RPC types
+type PlayerState = shared.PlayerState
+type GameState = shared.GameState
+type RegisterArgs = shared.RegisterArgs
+type RegisterReply = shared.RegisterReply
+type MoveArgs = shared.MoveArgs
+type MoveReply = shared.MoveReply
 
-//snapshot de estado retornado aos clientes no polling (GetGameState)
-type GameState struct {
-	Players map[string]PlayerState //id -> estado do jogador
-}
-
-//para registrar um jogador no servidor
-type RegisterArgs struct{ PlayerID string }
-type RegisterReply struct{ OK bool }
-
-//atualizar posição do jogador
-type MoveArgs struct {
-	PlayerID string
-	Linha    int
-	Col      int
-	SeqNum   int // garantia exactly-once
-}
-type MoveReply struct{ Applied bool } //true: aplicou; flase: foi duplicado (ignorado)
-
-//estrutura do servidor com o estado global e meméria de "exactly-once"
+// estrutura do servidor com o estado global e meméria de "exactly-once"
 type GameServer struct {
-	mu        sync.Mutex //proteger o acesso a 'players' e 'processed' em chamadas concorrentes
+	mu        sync.Mutex             //proteger o acesso a 'players' e 'processed' em chamadas concorrentes
 	players   map[string]PlayerState //mapa com a última posição conhecida de cada jogador
-	processed map[string]int // guarda o último SeqNum processado por cada jogador 
+	processed map[string]int         // guarda o último SeqNum processado por cada jogador
 }
 
-//construtor: inicia mapas vazios
+// construtor: inicia mapas vazios
 func NewGameServer() *GameServer {
 	return &GameServer{
 		players:   make(map[string]PlayerState),
@@ -51,14 +35,14 @@ func NewGameServer() *GameServer {
 	}
 }
 
-//RPC: registrar jogador
-//RegistrarPlayer: registra o playerID no servidor 
+// RPC: registrar jogador
+// RegistrarPlayer: registra o playerID no servidor
 func (s *GameServer) RegisterPlayer(args *RegisterArgs, rep *RegisterReply) error {
 	if args == nil || args.PlayerID == "" { //valida PlayerID
-		return errors.New("PlayerID vazio") 
+		return errors.New("PlayerID vazio")
 	}
-	s.mu.Lock() //usa lock para atualizar player
-	if _, ok := s.players[args.PlayerID]; !ok {  //não cria duplicado se já existir
+	s.mu.Lock()                                 //usa lock para atualizar player
+	if _, ok := s.players[args.PlayerID]; !ok { //não cria duplicado se já existir
 		s.players[args.PlayerID] = PlayerState{ID: args.PlayerID}
 	}
 	s.mu.Unlock()
@@ -67,11 +51,11 @@ func (s *GameServer) RegisterPlayer(args *RegisterArgs, rep *RegisterReply) erro
 	return nil
 }
 
-//RPC: atualiza posição com exactly-once
-//UpdatePlayerState: aplica nova posiçãoa do jogador com garantia exactly-once
+// RPC: atualiza posição com exactly-once
+// UpdatePlayerState: aplica nova posiçãoa do jogador com garantia exactly-once
 func (s *GameServer) UpdatePlayerState(args *MoveArgs, rep *MoveReply) error {
 	if args == nil || args.PlayerID == "" { //valida argumentos
-		return errors.New("args inválidos") 
+		return errors.New("args inválidos")
 	}
 	s.mu.Lock() //lock para ler/atualizar 'player' e 'processed'
 	defer s.mu.Unlock()
@@ -88,29 +72,38 @@ func (s *GameServer) UpdatePlayerState(args *MoveArgs, rep *MoveReply) error {
 	return nil
 }
 
-//RPC: obter snapshot do estado (polling dos clientes)
-//GetGameState: devolve um snapshot consistente do estado atual
-//copia o mapa 'players' sob lock para evitar data race
-//cliente usa esse snapshot em uma goroutine de polling periódico
+// RPC: obter snapshot do estado (polling dos clientes)
+// GetGameState: devolve um snapshot consistente do estado atual
+// copia o mapa 'players' sob lock para evitar data race
+// cliente usa esse snapshot em uma goroutine de polling periódico
 func (s *GameServer) GetGameState(_ *struct{}, rep *GameState) error {
 	s.mu.Lock()
 	cp := make(map[string]PlayerState, len(s.players))
-	for k, v := range s.players { cp[k] = v }
+	for k, v := range s.players {
+		cp[k] = v
+	}
 	s.mu.Unlock()
 	rep.Players = cp
 	return nil
 }
 
-//ponto de entrada do servidor RPC
+// ponto de entrada do servidor RPC
 func main() {
 	srv := NewGameServer()
-	if err := rpc.Register(srv); err != nil { log.Fatal(err) }
+	if err := rpc.Register(srv); err != nil {
+		log.Fatal(err)
+	}
 	l, err := net.Listen("tcp", ":1234")
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Println("[RPC] Servidor escutando em :1234")
 	for {
 		conn, err := l.Accept()
-		if err != nil { log.Println("Accept:", err); continue }
+		if err != nil {
+			log.Println("Accept:", err)
+			continue
+		}
 		go rpc.ServeConn(conn)
 	}
 }
