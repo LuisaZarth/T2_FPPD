@@ -1,0 +1,7 @@
+# standard gitignore for go projects
+/cliente/main
+/servidor/server
+/go.mod
+/go.sum
+/Makefile
+/build.bat
