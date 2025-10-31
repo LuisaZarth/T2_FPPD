@@ -57,8 +57,16 @@ func (rc *RemoteClient) updateState(linha, col int) {
 	args := &MoveArgs{PlayerID: rc.player, Linha: linha, Col: col, SeqNum: seq}
 	var rep MoveReply
 	err := rc.client.Call("GameServer.UpdatePlayerState", args, &rep)
-	if err != nil {
-		log.Println("Erro RPC:", err)
+	var maxRetries = 3
+	var retries = 0
+	for retries < maxRetries {
+		if err != nil {
+			log.Println("Erro RPC:", err)
+			retries++
+			time.Sleep(time.Second)
+			continue
+		}
+		break
 	}
 }
 
