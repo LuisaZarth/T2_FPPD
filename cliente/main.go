@@ -21,6 +21,13 @@ func main() {
 	cliente := NewRemoteClient(nomeJogador, servidor)
 	defer cliente.client.Close() // fechar a conexão com o servidor ao encerrar o programa
 
+
+	defer func() {
+		var empty struct{}
+		// avisa o servidor pra remover este jogador
+		cliente.client.Call("GameServer.UnregisterPlayer", cliente.PlayerID, &empty)
+	}()
+
 	jogo := jogoNovo()
 	if err := jogoCarregarMapa("mapa.txt", &jogo); err != nil {
 		panic(err) // encerrar o programa se o mapa não puder ser carregado
@@ -29,8 +36,8 @@ func main() {
 
 	loopPrincipal(&jogo, cliente)
 	fmt.Println("Jogo encerrado") // mensagem de encerramento do jogo
-
 }
+
 func loopPrincipal(jogo *Jogo, cliente *RemoteClient) {
 	// Draw initial state
 	interfaceDesenharJogo(jogo, cliente)
