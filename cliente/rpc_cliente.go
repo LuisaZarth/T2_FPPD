@@ -42,10 +42,16 @@ func NewRemoteClient(playerID, addr string) *RemoteClient {
 func (rc *RemoteClient) register() {
 	args := &RegisterArgs{PlayerID: rc.player}
 	var rep RegisterReply
-	if err := rc.client.Call("GameServer.RegisterPlayer", args, &rep); err != nil {
-		log.Println("Erro ao registrar jogador:", err)
-	} else {
-		log.Println("Jogador registrado:", rc.player)
+	var maxRetries = 3
+	var retries = 0
+	for retries < maxRetries {
+		if err := rc.client.Call("GameServer.RegisterPlayer", args, &rep); err != nil {
+			log.Println("Erro ao registrar jogador:", err)
+			retries++
+			time.Sleep(time.Second)
+			continue
+		}
+		break
 	}
 }
 
@@ -57,8 +63,16 @@ func (rc *RemoteClient) updateState(linha, col int) {
 	args := &MoveArgs{PlayerID: rc.player, Linha: linha, Col: col, SeqNum: seq}
 	var rep MoveReply
 	err := rc.client.Call("GameServer.UpdatePlayerState", args, &rep)
-	if err != nil {
-		log.Println("Erro RPC:", err)
+	var maxRetries = 3
+	var retries = 0
+	for retries < maxRetries {
+		if err != nil {
+			log.Println("Erro RPC:", err)
+			retries++
+			time.Sleep(time.Second)
+			continue
+		}
+		break
 	}
 }
 
