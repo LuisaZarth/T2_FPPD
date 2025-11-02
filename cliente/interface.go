@@ -69,7 +69,7 @@ func interfaceDesenharJogo(jogo *Jogo, cliente *RemoteClient) {
 
 		// Desenha os personagens dos outros jogadores
 		for _, player := range cliente.getRemotos() {
-   			if player.ID != cliente.player {  // ← Pula se for ele mesmo
+   			if player.ID != cliente.PlayerID {  // ← Pula se for ele mesmo
         		interfaceDesenharElemento(player.Col, player.Linha, Personagem)
     		}
 		}
