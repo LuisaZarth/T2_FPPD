@@ -19,14 +19,7 @@ func main() {
 	nomeJogador := os.Args[2]
 
 	cliente := NewRemoteClient(nomeJogador, servidor)
-	defer cliente.client.Close() // fechar a conexão com o servidor ao encerrar o programa
-
-
-	defer func() {
-		var empty struct{}
-		// avisa o servidor pra remover este jogador
-		cliente.client.Call("GameServer.UnregisterPlayer", cliente.PlayerID, &empty)
-	}()
+	defer cliente.close() // ✅ Usa o método close() que desregistra E fecha conexão
 
 	jogo := jogoNovo()
 	if err := jogoCarregarMapa("mapa.txt", &jogo); err != nil {

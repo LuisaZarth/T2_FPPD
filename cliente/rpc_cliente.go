@@ -18,19 +18,24 @@ type MoveArgs = shared.MoveArgs
 type MoveReply = shared.MoveReply
 
 type RemoteClient struct {
-	mu      sync.Mutex
-	client  *rpc.Client
-	seq     int
-	player  string
+	mu       sync.Mutex
+	client   *rpc.Client
+	seq      int
+	player   string
 	PlayerID string
-	remotos map[string]PlayerState
+	remotos  map[string]PlayerState
 }
 
 func NewRemoteClient(playerID, addr string) *RemoteClient {
 	for {
 		cli, err := rpc.Dial("tcp", addr)
 		if err == nil {
-			rc := &RemoteClient{client: cli, player: playerID, remotos: make(map[string]PlayerState)}
+			rc := &RemoteClient{
+				client:   cli,
+				player:   playerID,
+				PlayerID: playerID, // Garantir consistência
+				remotos:  make(map[string]PlayerState),
+			}
 			rc.register()
 			go rc.pollingLoop()
 			return rc
@@ -43,38 +48,56 @@ func NewRemoteClient(playerID, addr string) *RemoteClient {
 func (rc *RemoteClient) register() {
 	args := &RegisterArgs{PlayerID: rc.player}
 	var rep RegisterReply
-	var maxRetries = 3
-	var retries = 0
-	for retries < maxRetries {
-		if err := rc.client.Call("GameServer.RegisterPlayer", args, &rep); err != nil {
-			log.Println("Erro ao registrar jogador:", err)
-			retries++
-			time.Sleep(time.Second)
-			continue
+	maxRetries := 3
+
+	for retries := 0; retries < maxRetries; retries++ {
+		err := rc.client.Call("GameServer.RegisterPlayer", args, &rep)
+		if err == nil && rep.OK {
+			log.Printf("Jogador %s registrado com sucesso", rc.player)
+			return
 		}
-		break
+		log.Printf("Erro ao registrar jogador (tentativa %d/%d): %v", retries+1, maxRetries, err)
+		time.Sleep(time.Second)
 	}
+	log.Fatalf("Falha ao registrar jogador após %d tentativas", maxRetries)
 }
 
 func (rc *RemoteClient) updateState(linha, col int) {
+	// Incrementa sequência sob lock
 	rc.mu.Lock()
 	rc.seq++
 	seq := rc.seq
 	rc.mu.Unlock()
-	args := &MoveArgs{PlayerID: rc.player, Linha: linha, Col: col, SeqNum: seq}
-	var rep MoveReply
-	err := rc.client.Call("GameServer.UpdatePlayerState", args, &rep)
-	var maxRetries = 3
-	var retries = 0
-	for retries < maxRetries {
-		if err != nil {
-			log.Println("Erro RPC:", err)
-			retries++
-			time.Sleep(time.Second)
-			continue
-		}
-		break
+
+	args := &MoveArgs{
+		PlayerID: rc.player,
+		Linha:    linha,
+		Col:      col,
+		SeqNum:   seq,
 	}
+	var rep MoveReply
+	maxRetries := 3
+
+	for retries := 0; retries < maxRetries; retries++ {
+		err := rc.client.Call("GameServer.UpdatePlayerState", args, &rep)
+		
+		if err == nil {
+			if rep.Applied {
+				// Comando aplicado com sucesso
+				return
+			}
+			// Applied = false significa que foi duplicata (já processado)
+			// Isso é esperado em retransmissões, não é erro
+			log.Printf("Movimento seq=%d já processado (duplicata ignorada)", seq)
+			return
+		}
+
+		// Houve erro na comunicação, tentar novamente com MESMO SeqNum
+		log.Printf("Erro ao atualizar estado (tentativa %d/%d): %v", retries+1, maxRetries, err)
+		time.Sleep(time.Second)
+	}
+
+	log.Printf("AVISO: Falha ao atualizar posição após %d tentativas (seq=%d)", maxRetries, seq)
 }
 
 func (rc *RemoteClient) pollingLoop() {
@@ -104,5 +127,8 @@ func (rc *RemoteClient) getRemotos() map[string]PlayerState {
 }
 
 func (rc *RemoteClient) close() {
-	rc.client.Close() // fechar a conexão com o servidor
+	// Avisar servidor antes de fechar
+	var empty struct{}
+	rc.client.Call("GameServer.UnregisterPlayer", rc.PlayerID, &empty)
+	rc.client.Close()
 }
