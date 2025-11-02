@@ -72,6 +72,16 @@ func (s *GameServer) UpdatePlayerState(args *MoveArgs, rep *MoveReply) error {
 	return nil
 }
 
+func (s *GameServer) UnregisterPlayer(id string, _ *struct{}) error {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    delete(s.players, id)
+    log.Printf("Jogador %s removido.\n", id)
+    return nil
+}
+
+
+
 // RPC: obter snapshot do estado (polling dos clientes)
 // GetGameState: devolve um snapshot consistente do estado atual
 // copia o mapa 'players' sob lock para evitar data race

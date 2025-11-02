@@ -1,14 +1,13 @@
-.PHONY: all build
+.PHONY: all build clean distclean
 
 all: build
 
 go.mod:
-	go mod init jogo
-	go get -u github.com/nsf/termbox-go
+	go mod tidy
 
 build: go.mod
-	go build -o jogo
-	
+	cd cliente && go build -o ../jogo
+
 clean:
 	rm -f jogo
 

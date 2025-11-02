@@ -22,6 +22,7 @@ type RemoteClient struct {
 	client  *rpc.Client
 	seq     int
 	player  string
+	PlayerID string
 	remotos map[string]PlayerState
 }
 
