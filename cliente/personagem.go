@@ -19,7 +19,6 @@ func personagemMover(tecla rune, jogo *Jogo, cliente *RemoteClient) {
 
 	nx, ny := jogo.PosX+dx, jogo.PosY+dy
 	// Verifica se o movimento é permitido e realiza a movimentação
-	// ... existing movement logic ...
 	if jogoPodeMoverPara(jogo, nx, ny) {
 		jogoMoverElemento(jogo, jogo.PosX, jogo.PosY, dx, dy)
 		jogo.PosX, jogo.PosY = nx, ny

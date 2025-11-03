@@ -19,20 +19,20 @@ func main() {
 	nomeJogador := os.Args[2]
 
 	cliente := NewRemoteClient(nomeJogador, servidor)
-	defer cliente.close() // ✅ Usa o método close() que desregistra E fecha conexão
+	defer cliente.close() // Usando o método close() que desregistra E fecha conexão
 
 	jogo := jogoNovo()
 	if err := jogoCarregarMapa("mapa.txt", &jogo); err != nil {
 		panic(err) // encerrar o programa se o mapa não puder ser carregado
 	}
-	cliente.updateState(jogo.PosY, jogo.PosX) // Sync initial position
+	cliente.updateState(jogo.PosY, jogo.PosX) // sincroniza a posição inicial do player
 
 	loopPrincipal(&jogo, cliente)
 	fmt.Println("Jogo encerrado") // mensagem de encerramento do jogo
 }
 
 func loopPrincipal(jogo *Jogo, cliente *RemoteClient) {
-	// Draw initial state
+	// Desenha o estado inicial
 	interfaceDesenharJogo(jogo, cliente)
 
 	for {
