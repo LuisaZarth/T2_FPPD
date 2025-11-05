@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -34,6 +35,14 @@ func main() {
 func loopPrincipal(jogo *Jogo, cliente *RemoteClient) {
 	// Desenha o estado inicial
 	interfaceDesenharJogo(jogo, cliente)
+	//cria goroutine para atualizar a tela a cada 100ms
+	go func() {
+		for {
+			time.Sleep(100 * time.Millisecond)
+			interfaceAtualizarTela()
+			interfaceDesenharJogo(jogo, cliente)
+		}
+	}()
 
 	for {
 		evento := interfaceLerEventoTeclado()
