@@ -14,8 +14,8 @@ Comunicação (RPC):
 # Para rodar o jogo:
 1. Rodar o servidor na pasta *servidor* usando:
         go run server.go
-- servidor será iniciado em localhost:1234
+- servidor será iniciado em <endereço>:<porta>
 2. rodar o cliente na pasta cliente usando:
-        go run . localhost:1234 NomeDoJogador
+        go run . <endereço>:<porta> NomeDoJogador
 3. iniciar outro jogador na pasta cliente (em um terminal diferente)
-        gor un . localhost:1234 NomeDoJogador2
+        go run . <endereço>:<porta> NomeDoJogador2
